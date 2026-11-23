@@ -152,7 +152,9 @@ function rankIfAdded(score,combo){let r=1;for(const e of ranks){if(e.score>score
 function roleLabel(r){return r==='magpie'?'까치':r==='person'?'장대':'혼자'}
 
 function newPlayer(dev,role){return{dev,role,x:role==='magpie'?420:W/2-120,y:role==='magpie'?480:PY,vx:0,face:1,score:0,combo:0,maxCombo:0,stun:0,slow:0,dashT:0,dashCd:0,dashDir:1,caught:0,flap:0}}
-function setupPlayers(devs){players=devs.length===1?[newPlayer(devs[0],'solo')]:[newPlayer(devs[0],'person'),newPlayer(devs[1],'magpie')];if(players.length===1)players[0].x=W/2-120}
+function devSide(dev){if(!dev||!dev.startsWith('pad:'))return'';const a=dev.split(':');if(a[2])return a[2];const gp=padByIndex(+a[1]);if(!gp)return'';
+  if(/\(L\)|Joy-?Con\s*L\b|\bLeft\b/i.test(gp.id))return'L';if(/\(R\)|Joy-?Con\s*R\b|\bRight\b/i.test(gp.id))return'R';return''}
+function setupPlayers(devs){if(devs.length===2&&devSide(devs[0])==='R'&&devSide(devs[1])==='L')devs=[devs[1],devs[0]];players=devs.length===1?[newPlayer(devs[0],'solo')]:[newPlayer(devs[0],'person'),newPlayer(devs[1],'magpie')];if(players.length===1)players[0].x=W/2-120}
 function startRound(){items=[];fx=[];T=CFG.time;spawnT=0.5}
 function phase(){const e=CFG.time-T;return e<CFG.time/3?0:e<CFG.time*2/3?1:2}
 const INT=[0.95,0.68,0.44],PHONG=[0.10,0.15,0.18],PBURR=[0,0.12,0.15],V0=[230,290,350];
@@ -255,7 +257,7 @@ function drawJoin(){drawBg();dim(0.4);panel(300,300,1000,520);const left=Math.ma
   if(S.devs.length===1){txt('1P 참가 완료!',W/2,400,88,ORANGE);txt(S.devs[0]==='touch'?'둘이 하면 한 화면에서':'친구도 자기 조이콘 버튼을 누르면',W/2,520,52,GREEN,'center',null,0,800);txt('장대 vs 까치 2인 대결',W/2,590,58,GREEN);
     if(S.devs[0]==='touch'){panel(350,676,440,116,ORANGE,'#fff');txt('혼자 시작 ('+left+')',570,734,46,'#fff');panel(810,676,440,116,GREEN,'#fff');txt('둘이 하기 (터치)',1030,734,46,'#fff')}
     else{txt(left+'초 뒤 혼자 시작',W/2,700,46,'#6b7466','center',null,0,700);txt('1P가 버튼을 한 번 더 누르면 바로 시작',W/2,768,30,'#8a927f','center',null,0,600)}}
-  else{txt('2인 대결!',W/2,400,96,ORANGE);img('gam',W/2-250,580,150);txt('1P 장대',W/2-250,700,50,GREEN);txt('VS',W/2,590,80,GREEN);img('k5',W/2+250,570,190);txt('2P 까치',W/2+250,700,50,GREEN)}}
+  else{txt('2인 대결!',W/2,400,96,ORANGE);img('gam',W/2-250,570,150);txt('1P 장대',W/2-250,690,50,GREEN);txt('VS',W/2,580,80,GREEN);img('k5',W/2+250,560,190);txt('2P 까치',W/2+250,690,50,GREEN);if(S.devs.some(d=>devSide(d)))txt('왼쪽 조이콘이 1P 장대 · 오른쪽 조이콘이 2P 까치',W/2,770,34,'#6b7466','center',null,0,800)}}
 function drawCalib(){drawBg();dim(0.45);panel(240,280,1120,600);txt('조작 방향 맞추기',W/2,370,72,GREEN);
   const n=S.cal.length;S.cal.forEach((c,i)=>{const cx=n===1?W/2:W/2+(i?270:-270),who=(players.indexOf(c.p)+1)+'P'+(c.p.role==='magpie'?' 까치':c.p.role==='person'?' 장대':'');
     txt(who,cx,480,64,ORANGE);if(c.done){txt('좋아요!',cx,620,64,GREEN)}else{const off=Math.sin(S.t*6)*24;txt('스틱을',cx,560,44,GREEN,'center',null,0,800);txt('➜',cx+off,650,120,ORANGE);txt('오른쪽으로 밀기',cx,750,44,GREEN,'center',null,0,800)}});
