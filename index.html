@@ -26,9 +26,11 @@ input.nm:focus,input.nm.sel{border-color:#ea7557;box-shadow:0 0 0 .22em rgba(234
 .pl .now{font-size:.85em;font-weight:800;color:#ea7557;min-height:1.3em}
 button{font:inherit;font-weight:900;border:none;border-radius:.6em;cursor:pointer;color:#fff;background:#ea7557;padding:.4em 1.2em;font-size:1.6em;box-shadow:0 .18em 0 #b9523a}
 button:active{transform:translateY(.1em);box-shadow:0 .08em 0 #b9523a}
+button.sel{outline:.22em solid #515c4b;outline-offset:.16em;transform:scale(1.06)}
 button.sub{background:#515c4b;box-shadow:0 .18em 0 #363e32;font-size:1em}
 button.warn{background:#c0392b;box-shadow:0 .18em 0 #8a271d}
-.hint{font-size:.8em;margin-top:.8em;color:#6b7466}
+#nameOk{margin-top:.45em}
+.hint{font-size:.78em;line-height:1.5;margin-top:.8em;color:#6b7466}
 #menu .card{text-align:left;min-width:30em;padding:1.1em 1.8em}
 #menu .card h2{font-size:1.9em;margin-bottom:.3em}
 .set{display:flex;align-items:center;justify-content:space-between;gap:1em;margin:.35em 0;font-size:1.1em;font-weight:700}
@@ -103,7 +105,7 @@ const keys={};let presses=[];
 const padPrev={};
 const DZ=0.28;
 function typing(){const a=document.activeElement;return a&&a.tagName==='INPUT'}
-addEventListener('keydown',e=>{audioUnlock();if(typing())return;if(S.name==='name'&&!menuOpen&&nameInputs.length){if(e.key==='Enter'){e.preventDefault();nameAdvance()}else setSel(nameSel);return}if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
+addEventListener('keydown',e=>{audioUnlock();if(typing())return;if(S.name==='name'&&!menuOpen&&nameInputs.length){if(e.key==='Enter'){e.preventDefault();nameAdvance()}else if(e.key==='ArrowLeft')setSel(nameSel-1);else if(e.key==='ArrowRight')setSel(nameSel+1);else if(nameSel<nameInputs.length)setSel(nameSel);return}if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
   if(!keys[e.code]){if(e.code==='Space'||e.code==='Enter')presses.push('kb1');if(e.code==='KeyF'||e.code==='KeyG')presses.push('kb2');if(e.code==='KeyO')toggleMenu()}
   keys[e.code]=true});
 addEventListener('keyup',e=>{keys[e.code]=false});
@@ -276,14 +278,22 @@ function drawResult(){drawWorld();dim(0.5);panel(260,230,1080,700);
 const nameOv=document.getElementById('nameOv'),nameRow=document.getElementById('nameRow'),nameHint=document.getElementById('nameHint');
 let nameLeft=0,nameInputs=[],nameNow=[],nameSel=0;
 function defName(p){counters.guest++;return(p.role==='magpie'?'까치':'감돌이')+counters.guest}
-function setSel(i){nameSel=Math.max(0,Math.min(nameInputs.length-1,i));nameInputs.forEach((inp,k)=>{inp.classList.toggle('sel',k===nameSel);nameNow[k].textContent=k===nameSel?'▼ 키보드로 입력':''});
-  const el=nameInputs[nameSel];if(el&&document.activeElement!==el){try{el.focus({preventScroll:true})}catch(e){try{el.focus()}catch(e2){}}}nameLeft=Math.max(nameLeft,25)}
-function nameAdvance(){if(S.name!=='name')return;if(nameSel<nameInputs.length-1)setSel(nameSel+1);else submitNames()}
+const nameOkBtn=document.getElementById('nameOk');
+function setSel(i){const n=nameInputs.length;nameSel=Math.max(0,Math.min(n,i));nameInputs.forEach((inp,k)=>{inp.classList.toggle('sel',k===nameSel);nameNow[k].textContent=k===nameSel?'▼ 키보드로 입력':''});
+  nameOkBtn.classList.toggle('sel',nameSel===n);
+  if(nameSel===n){const a=document.activeElement;if(a&&a.tagName==='INPUT')a.blur()}
+  else{const el=nameInputs[nameSel];if(el&&document.activeElement!==el){try{el.focus({preventScroll:true})}catch(e){try{el.focus()}catch(e2){}}}}
+  nameLeft=Math.max(nameLeft,25)}
+function nameAdvance(){if(S.name!=='name')return;if(nameSel<nameInputs.length)setSel(nameSel+1);else submitNames()}
+function namePad(dev){if(S.name!=='name')return;const n=nameInputs.length,k=players.findIndex(p=>p.dev===dev);
+  if(nameSel===n){submitNames();return}
+  if(k<0){nameAdvance();return}
+  if(nameSel===k)setSel(n);else setSel(k)}
 function openNames(){nameRow.innerHTML='';nameInputs=[];nameNow=[];players.forEach((p,k)=>{const d=document.createElement('div');d.className='pl';const lab=p.role==='magpie'?'2P 까치':p.role==='person'?'1P 장대':'내 점수';
     d.innerHTML=`<div class="lab">${lab}</div><div class="sc">${p.score}점</div>`;const now=document.createElement('div');now.className='now';d.appendChild(now);nameNow.push(now);
     const inp=document.createElement('input');inp.className='nm';inp.maxLength=6;inp.placeholder=defName(p);inp.setAttribute('autocomplete','off');inp.setAttribute('autocapitalize','off');inp.setAttribute('autocorrect','off');inp.setAttribute('spellcheck','false');inp.setAttribute('enterkeyhint','next');
-    inp.addEventListener('input',()=>{nameLeft=30});inp.addEventListener('focus',()=>{if(nameSel!==k){nameSel=k;setSel(k)}nameLeft=Math.max(nameLeft,25)});
-    inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();nameAdvance()}});d.appendChild(inp);nameRow.appendChild(d);nameInputs.push(inp)});
+    inp.addEventListener('input',()=>{nameLeft=30});inp.addEventListener('focus',()=>{if(nameSel!==k)setSel(k);nameLeft=Math.max(nameLeft,25)});
+    inp.addEventListener('keydown',e=>{e.stopPropagation();audioUnlock();if(e.key==='Enter'&&!e.isComposing){e.preventDefault();nameAdvance()}});d.appendChild(inp);nameRow.appendChild(d);nameInputs.push(inp)});
   nameLeft=30;nameOv.classList.add('on');nameSel=0;setSel(0);setTimeout(()=>{if(S.name==='name')setSel(nameSel)},80)}
 function submitNames(){if(S.name!=='name')return;const now=Date.now();lastNew=[];players.forEach((p,i)=>{const inp=nameInputs[i];const nm=(inp.value||'').trim().slice(0,6)||inp.placeholder;const id=now+'-'+i;ranks.push({id,name:nm,score:p.score,combo:p.maxCombo,role:p.role,t:now+i});lastNew.push(id)});
   ranks=sortedRanks().slice(0,300);saveAll();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();nameOv.classList.remove('on');go('rank')}
@@ -327,11 +337,11 @@ function frame(ts){const dt=Math.min(0.05,(ts-last)/1000||0);last=ts;pollPads();
     case'play':updatePlay(dt,true);drawWorld();drawHud();if(T<=5&&Math.ceil(T)!==S.lastSec){S.lastSec=Math.ceil(T);if(T>0)SFX.tick()}if(T<=0){T=0;SFX.end();go('end')}break;
     case'end':updatePlay(dt,false);drawWorld();drawHud();dim(0.25);txt('끝!',W/2,560,260,'#fff','center',GREEN,36);if(S.t>1.4)go('result');break;
     case'result':drawResult();if(S.t>5.5||(S.t>1.5&&presses.length)){go('name');openNames()}break;
-    case'name':{drawWorld();dim(0.3);nameLeft-=dt;const lastF=nameSel>=nameInputs.length-1;
-      nameHint.textContent='키보드로 이름 입력 → Enter 또는 조이콘 버튼: '+(lastF?'랭킹 등록':'다음 사람')+(nameInputs.length>1?' · 스틱 좌우: 칸 이동':'')+' · '+Math.max(0,Math.ceil(nameLeft))+'초 뒤 자동 등록';
+    case'name':{drawWorld();dim(0.3);nameLeft-=dt;const two=nameInputs.length>1,onBtn=nameSel>=nameInputs.length;
+      nameHint.innerHTML=(two?'1P 버튼: 왼쪽 칸 · 2P 버튼: 오른쪽 칸 · 스틱 좌우: 이동':'스틱 좌우: 이름 칸 ↔ 등록 버튼')+'<br>'+(onBtn?'지금 버튼을 누르면 랭킹 등록!':'이름을 다 쳤으면 버튼을 한 번 더 → 랭킹 등록으로 이동')+' · '+Math.max(0,Math.ceil(nameLeft))+'초 뒤 자동 등록';
       let nx=0;for(const p of players){const v=readDev(p.dev);if(p.dev.startsWith('pad:')&&Math.abs(v.x)>0.6)nx=Math.sign(v.x)}
       if(nx!==(S.nx||0)){S.nx=nx;if(nx)setSel(nameSel+nx)}
-      if(S.t>1.0&&presses.some(d=>d.startsWith('pad:')))nameAdvance();
+      if(S.t>1.0){const d=presses.find(d=>d.startsWith('pad:'));if(d)namePad(d)}
       if(nameLeft<=0)submitNames();break}
     case'rank':drawBg();drawRankBoard(0.45);if(Math.floor(S.t*1.6)%2===0)txt('버튼을 누르면 처음으로',W/2,1150,36,'#fff','center',GREEN,10,800);if(S.t>10||(S.t>2&&presses.length))go('idle');break;
   }
