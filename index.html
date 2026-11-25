@@ -177,7 +177,7 @@ function updatePlay(dt,active){
     if(p.slow>0)p.slow-=dt;if(p.dashCd>0)p.dashCd-=dt;
     if(ix!==0){p.face=ix>0?1:-1;p.dashDir=p.face}
     if((p.dev.startsWith('kb')?acts:presses).includes(p.dev)&&!p.dev.startsWith('touch')&&p.dashCd<=0&&p.stun<=0&&active){p.dashT=0.16;p.dashCd=0.8;SFX.dash()}
-    if(p.role==='magpie'){const sp=600*CFG.mag*(p.slow>0?0.55:1);let vx=ix*sp,vy=iy*sp;if(p.dashT>0){p.dashT-=dt;vx+=p.dashDir*1100}
+    if(p.role==='magpie'){const sp=600*CFG.mag*(p.dev.startsWith('kb')?0.6:1)*(p.slow>0?0.55:1);let vx=ix*sp,vy=iy*sp;if(p.dashT>0){p.dashT-=dt;vx+=p.dashDir*1100}
       p.x=Math.max(60,Math.min(1340,p.x+vx*dt));p.y=Math.max(350,Math.min(740,p.y+vy*dt));p.vx=vx;p.flap+=dt*(Math.abs(vx)+Math.abs(vy)>50?1.6:1)}
     else{let vx=ix*900;if(p.dashT>0){p.dashT-=dt;vx=p.dashDir*2000}p.x=Math.max(PXMIN,Math.min(PXMAX,p.x+vx*dt));p.vx+= (vx-p.vx)*Math.min(1,dt*10)}
   }
