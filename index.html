@@ -128,7 +128,7 @@ const INGAME=['count','play','end'];
 const padPrev={};
 const DZ=0.28;
 function typing(){const a=document.activeElement;return a&&a.tagName==='INPUT'}
-addEventListener('keydown',e=>{audioUnlock();if(typing())return;if(!['Digit9','Numpad9'].includes(e.code))healFull();if(S.name==='name'&&!menuOpen&&nameInputs.length){if(S.t<1.0){e.preventDefault();return}if(e.key==='Enter'){e.preventDefault();nameAdvance()}else if(e.key==='Tab'){e.preventDefault();setSel(e.shiftKey?nameSel-1:(nameSel+1)%(nameInputs.length+1))}else if(e.key==='ArrowLeft')setSel(nameSel-1);else if(e.key==='ArrowRight')setSel(nameSel+1);else if(nameSel<nameInputs.length)setSel(nameSel);return}if(KB1M.includes(e.code)||KB1A.includes(e.code)||KB2A.includes(e.code)||e.code==='Tab')e.preventDefault();
+addEventListener('keydown',e=>{audioUnlock();if(typing())return;if(!['Digit9','Numpad9'].includes(e.code))healFull();if(S.name==='name'&&!menuOpen&&nameInputs.length){if(S.t<1.0){e.preventDefault();return}if(e.key==='Enter'){e.preventDefault();nameAdvance()}else if(e.key==='Tab'){e.preventDefault();setSel(e.shiftKey?nameSel-1:(nameSel+1)%(nameInputs.length+1))}else if(e.key==='ArrowLeft')setSel(nameSel-1);else if(e.key==='ArrowRight')setSel(nameSel+1);else if(nameCustom){e.preventDefault();nameKey(e);nameLeft=30}else if(nameSel<nameInputs.length)setSel(nameSel);return}if(KB1M.includes(e.code)||KB1A.includes(e.code)||KB2A.includes(e.code)||e.code==='Tab')e.preventDefault();
   if(!keys[e.code]){const c=e.code;if(KB1A.includes(c)){presses.push('kb1');acts.push('kb1')}else if(KB2A.includes(c)){presses.push('kb2');acts.push('kb2')}else if(!INGAME.includes(S.name)){if(KB1M.includes(c))presses.push('kb1');else if(KB2M.includes(c))presses.push('kb2')}if(c==='Digit0'||c==='Numpad0')toggleMenu();if((c==='Digit9'||c==='Numpad9')&&S.name==='idle')toggleFull()}
   keys[e.code]=true});
 addEventListener('keyup',e=>{keys[e.code]=false});
@@ -303,11 +303,45 @@ function drawResult(){drawWorld();dim(0.5);panel(260,230,1080,700);
 /* ---------- name entry ---------- */
 const nameOv=document.getElementById('nameOv'),nameRow=document.getElementById('nameRow'),nameHint=document.getElementById('nameHint');
 let nameLeft=0,nameInputs=[],nameNow=[],nameSel=0;
+/* --- own text entry (no focused text field), used while in fullscreen: Safari on iPad leaves fullscreen when a text field gets focus --- */
+let nameCustom=false,nameKo=true,nameTxt=[],nameCur=[];
+const H_CHO='ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ',H_JUNG='ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ',H_JONG=['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+const H_VV={'ㅗㅏ':'ㅘ','ㅗㅐ':'ㅙ','ㅗㅣ':'ㅚ','ㅜㅓ':'ㅝ','ㅜㅔ':'ㅞ','ㅜㅣ':'ㅟ','ㅡㅣ':'ㅢ'},H_FF={'ㄱㅅ':'ㄳ','ㄴㅈ':'ㄵ','ㄴㅎ':'ㄶ','ㄹㄱ':'ㄺ','ㄹㅁ':'ㄻ','ㄹㅂ':'ㄼ','ㄹㅅ':'ㄽ','ㄹㅌ':'ㄾ','ㄹㅍ':'ㄿ','ㄹㅎ':'ㅀ','ㅂㅅ':'ㅄ'};
+const H_KEY={KeyQ:'ㅂ',KeyW:'ㅈ',KeyE:'ㄷ',KeyR:'ㄱ',KeyT:'ㅅ',KeyY:'ㅛ',KeyU:'ㅕ',KeyI:'ㅑ',KeyO:'ㅐ',KeyP:'ㅔ',KeyA:'ㅁ',KeyS:'ㄴ',KeyD:'ㅇ',KeyF:'ㄹ',KeyG:'ㅎ',KeyH:'ㅗ',KeyJ:'ㅓ',KeyK:'ㅏ',KeyL:'ㅣ',KeyZ:'ㅋ',KeyX:'ㅌ',KeyC:'ㅊ',KeyV:'ㅍ',KeyB:'ㅠ',KeyN:'ㅜ',KeyM:'ㅡ'},H_SHIFT={'ㅂ':'ㅃ','ㅈ':'ㅉ','ㄷ':'ㄸ','ㄱ':'ㄲ','ㅅ':'ㅆ','ㅐ':'ㅒ','ㅔ':'ㅖ'};
+function hSplit(map,x){for(const k in map)if(map[k]===x)return[k[0],k[1]];return null}
+function hCompose(u){if(!u)return'';if(u.c&&u.v)return String.fromCharCode(0xAC00+(H_CHO.indexOf(u.c)*21+H_JUNG.indexOf(u.v))*28+Math.max(0,H_JONG.indexOf(u.f||'')));return (u.c||'')+(u.v||'')}
+function nameVal(k){return nameTxt[k]+hCompose(nameCur[k])}
+function hCommit(k){nameTxt[k]+=hCompose(nameCur[k]);nameCur[k]=null}
+function hJamo(k,j){const MAX=6;let u=nameCur[k];const isV=H_JUNG.includes(j);const start=o=>{if(nameTxt[k].length>=MAX)return;nameCur[k]=o};
+  if(!u){start(isV?{v:j}:{c:j});return}
+  if(!isV){if(u.c&&u.v&&!u.f&&H_JONG.includes(j)){u.f=j;return}
+    if(u.c&&u.v&&u.f&&H_FF[u.f+j]){u.f=H_FF[u.f+j];return}
+    hCommit(k);start({c:j});return}
+  if(u.c&&!u.v){u.v=j;return}
+  if(u.v&&!u.f){if(H_VV[u.v+j]){u.v=H_VV[u.v+j];return}hCommit(k);start({v:j});return}
+  if(u.f){const sp=hSplit(H_FF,u.f);let nc;if(sp){u.f=sp[0];nc=sp[1]}else{nc=u.f;u.f=null}if(!H_CHO.includes(nc)){hCommit(k);start({v:j});return}hCommit(k);start({c:nc,v:j});return}
+  hCommit(k);start({v:j})}
+function hBack(k){const u=nameCur[k];if(!u){nameTxt[k]=nameTxt[k].slice(0,-1);return}
+  if(u.f){const sp=hSplit(H_FF,u.f);u.f=sp?sp[0]:null;return}
+  if(u.v){const sp=hSplit(H_VV,u.v);if(sp){u.v=sp[0];return}u.v=null;if(!u.c)nameCur[k]=null;return}
+  nameCur[k]=null}
+function hChar(k,ch){hCommit(k);if(nameTxt[k].length<6)nameTxt[k]+=ch}
+function nameRender(){if(!nameCustom)return;const blink=Math.floor(performance.now()/450)%2===0;nameInputs.forEach((inp,k)=>{const v=nameVal(k);inp.value=v+((k===nameSel&&blink)?'|':(k===nameSel?' ':''))})}
+function nameKey(e){const k=nameSel,n=nameInputs.length,c=e.code;
+  if(['CapsLock','Lang1','Lang2','AltRight','HangulMode'].includes(c)||(c==='Space'&&e.ctrlKey)){if(k<n&&nameCur[k])hCommit(k);nameKo=!nameKo;setSel(nameSel);return}
+  if(k>=n||e.metaKey||e.ctrlKey||e.altKey)return;
+  if(c==='Backspace'){hBack(k);return}
+  if(/^Key[A-Z]$/.test(c)){if(nameKo){let j=H_KEY[c];if(e.shiftKey&&H_SHIFT[j])j=H_SHIFT[j];hJamo(k,j)}else{const ch=c.slice(3);hChar(k,e.shiftKey?ch:ch.toLowerCase())}return}
+  if(/^Digit[0-9]$/.test(c)&&!e.shiftKey){hChar(k,c.slice(5));return}
+  if(/^Numpad[0-9]$/.test(c)){hChar(k,c.slice(6));return}
+  if(c==='Space'){hChar(k,' ');return}
+  if(c==='Minus'&&!e.shiftKey){hChar(k,'-');return}}
 function defName(p){counters.guest++;return(p.role==='magpie'?'까치':'감돌이')+counters.guest}
 const nameOkBtn=document.getElementById('nameOk');
-function setSel(i){const n=nameInputs.length;nameSel=Math.max(0,Math.min(n,i));nameInputs.forEach((inp,k)=>{inp.classList.toggle('sel',k===nameSel);nameNow[k].textContent=k===nameSel?'▼ 키보드로 입력':''});
+function setSel(i){const n=nameInputs.length;nameSel=Math.max(0,Math.min(n,i));nameInputs.forEach((inp,k)=>{inp.classList.toggle('sel',k===nameSel);nameNow[k].textContent=k===nameSel?(nameCustom?('▼ 키보드로 입력 · '+(nameKo?'한글':'영문')):'▼ 키보드로 입력'):''});
   nameOkBtn.classList.toggle('sel',nameSel===n);
   if(nameSel===n){const a=document.activeElement;if(a&&a.tagName==='INPUT')a.blur()}
+  else if(nameCustom){const a=document.activeElement;if(a&&a.tagName==='INPUT')a.blur()}
   else{const el=nameInputs[nameSel];if(el&&document.activeElement!==el){try{el.focus({preventScroll:true})}catch(e){try{el.focus()}catch(e2){}}}}
   nameLeft=Math.max(nameLeft,25)}
 function nameAdvance(){if(S.name!=='name')return;if(nameSel<nameInputs.length)setSel(nameSel+1);else submitNames()}
@@ -315,13 +349,13 @@ function namePad(dev){if(S.name!=='name')return;const n=nameInputs.length,k=play
   if(nameSel===n){submitNames();return}
   if(k<0){nameAdvance();return}
   if(nameSel===k)setSel(n);else setSel(k)}
-function openNames(){nameRow.innerHTML='';nameInputs=[];nameNow=[];players.forEach((p,k)=>{const d=document.createElement('div');d.className='pl';const lab=p.role==='magpie'?'2P 까치':p.role==='person'?'1P 장대':'내 점수';
+function openNames(){const fd=document;nameCustom=!!(wantFull||fd.fullscreenElement||fd.webkitFullscreenElement);nameKo=true;nameTxt=players.map(()=>'');nameCur=players.map(()=>null);nameRow.innerHTML='';nameInputs=[];nameNow=[];players.forEach((p,k)=>{const d=document.createElement('div');d.className='pl';const lab=p.role==='magpie'?'2P 까치':p.role==='person'?'1P 장대':'내 점수';
     d.innerHTML=`<div class="lab">${lab}</div><div class="sc">${p.score}점</div>`;const now=document.createElement('div');now.className='now';d.appendChild(now);nameNow.push(now);
     const inp=document.createElement('input');inp.className='nm';inp.maxLength=6;inp.placeholder=defName(p);inp.setAttribute('autocomplete','off');inp.setAttribute('autocapitalize','off');inp.setAttribute('autocorrect','off');inp.setAttribute('spellcheck','false');inp.setAttribute('enterkeyhint','next');
     inp.addEventListener('input',()=>{nameLeft=30});inp.addEventListener('focus',()=>{if(nameSel!==k)setSel(k);nameLeft=Math.max(nameLeft,25)});
     inp.addEventListener('keydown',e=>{e.stopPropagation();audioUnlock();if(inp.readOnly){e.preventDefault();return}if(e.key==='Enter'&&!e.isComposing){e.preventDefault();nameAdvance()}else if(e.key==='Tab'){e.preventDefault();setSel(e.shiftKey?nameSel-1:(nameSel+1)%(nameInputs.length+1))}});d.appendChild(inp);nameRow.appendChild(d);nameInputs.push(inp)});
-  nameLeft=30;nameOv.classList.add('on');nameSel=0;setSel(0);nameInputs.forEach(i=>i.readOnly=true);setTimeout(()=>{nameInputs.forEach(i=>i.readOnly=false);if(S.name==='name')setSel(nameSel)},1000)}
-function submitNames(){if(S.name!=='name')return;const now=Date.now();lastNew=[];players.forEach((p,i)=>{const inp=nameInputs[i];const nm=(inp.value||'').trim().slice(0,6)||inp.placeholder;const id=now+'-'+i;ranks.push({id,name:nm,score:p.score,combo:p.maxCombo,role:p.role,t:now+i});lastNew.push(id)});
+  nameLeft=30;nameOv.classList.add('on');nameSel=0;if(nameCustom)nameInputs.forEach(i=>{i.readOnly=true;i.tabIndex=-1;i.style.pointerEvents='none'});setSel(0);nameInputs.forEach(i=>i.readOnly=true);setTimeout(()=>{if(nameCustom)return;nameInputs.forEach(i=>i.readOnly=false);if(S.name==='name')setSel(nameSel)},1000)}
+function submitNames(){if(S.name!=='name')return;const now=Date.now();lastNew=[];players.forEach((p,i)=>{const inp=nameInputs[i];const nm=((nameCustom?nameVal(i):inp.value)||'').trim().slice(0,6)||inp.placeholder;const id=now+'-'+i;ranks.push({id,name:nm,score:p.score,combo:p.maxCombo,role:p.role,t:now+i});lastNew.push(id)});
   ranks=sortedRanks().slice(0,300);saveAll();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();nameOv.classList.remove('on');go('rank')}
 document.getElementById('nameOk').addEventListener('click',submitNames);
 
@@ -374,8 +408,8 @@ function frame(ts){const fsWant=(S.name==='idle'&&!menuOpen&&navigator.standalon
     case'play':updatePlay(dt,true);drawWorld();drawHud();if(T<=5&&Math.ceil(T)!==S.lastSec){S.lastSec=Math.ceil(T);if(T>0)SFX.tick()}if(T<=0){T=0;SFX.end();go('end')}break;
     case'end':updatePlay(dt,false);drawWorld();drawHud();dim(0.25);txt('끝!',W/2,560,260,'#fff','center',GREEN,36);if(S.t>1.4)go('result');break;
     case'result':drawResult();if(S.t>5.5||(S.t>1.5&&presses.length)){go('name');openNames()}break;
-    case'name':{drawWorld();dim(0.3);nameLeft-=dt;const two=nameInputs.length>1,onBtn=nameSel>=nameInputs.length;
-      const padP=players.some(p=>p.dev.startsWith('pad:'));nameHint.innerHTML=(padP?((two?'1P 버튼: 왼쪽 칸 · 2P 버튼: 오른쪽 칸 · 스틱 좌우: 이동':'스틱 좌우: 이름 칸 ↔ 등록 버튼')+'<br>'+(onBtn?'지금 버튼을 누르면 랭킹 등록!':'이름을 다 쳤으면 버튼을 한 번 더 → 랭킹 등록으로 이동')):('이름을 치고 엔터 → '+(two?'다음 사람 → ':'')+'랭킹 등록'+(two?' · 탭 키: 칸 이동':'')+'<br>'+(onBtn?'지금 엔터를 누르면 랭킹 등록!':'이름을 안 쳐도 엔터만 누르면 자동 이름으로 등록')))+' · '+Math.max(0,Math.ceil(nameLeft))+'초 뒤 자동 등록';
+    case'name':{drawWorld();dim(0.3);nameLeft-=dt;nameRender();const two=nameInputs.length>1,onBtn=nameSel>=nameInputs.length;
+      const padP=players.some(p=>p.dev.startsWith('pad:'));nameHint.innerHTML=(padP?((two?'1P 버튼: 왼쪽 칸 · 2P 버튼: 오른쪽 칸 · 스틱 좌우: 이동':'스틱 좌우: 이름 칸 ↔ 등록 버튼')+'<br>'+(onBtn?'지금 버튼을 누르면 랭킹 등록!':'이름을 다 쳤으면 버튼을 한 번 더 → 랭킹 등록으로 이동')):('이름을 치고 엔터 → '+(two?'다음 사람 → ':'')+'랭킹 등록'+(two?' · 탭 키: 칸 이동':'')+(nameCustom?' · 한/영 전환: Caps Lock':'')+'<br>'+(onBtn?'지금 엔터를 누르면 랭킹 등록!':'이름을 안 쳐도 엔터만 누르면 자동 이름으로 등록')))+' · '+Math.max(0,Math.ceil(nameLeft))+'초 뒤 자동 등록';
       let nx=0;for(const p of players){const v=readDev(p.dev);if(p.dev.startsWith('pad:')&&Math.abs(v.x)>0.6)nx=Math.sign(v.x)}
       if(nx!==(S.nx||0)){S.nx=nx;if(nx)setSel(nameSel+nx)}
       if(S.t>1.0){const d=presses.find(d=>d.startsWith('pad:'));if(d)namePad(d)}
