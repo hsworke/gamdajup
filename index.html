@@ -54,6 +54,16 @@ button.warn{background:#c0392b;box-shadow:0 .18em 0 #8a271d}
     <button id="nameOk">랭킹 등록</button>
     <div class="hint" id="nameHint"></div>
   </div></div>
+  <div class="ov" id="a2hs" style="z-index:4"><div class="card" style="text-align:left;max-width:86%">
+    <h2 style="text-align:center">아이패드에서 전체화면으로 열기</h2>
+    <div style="font-size:1.15em;font-weight:700;line-height:1.75">
+      1. 사파리 위쪽의 <b>공유 버튼</b>(네모에서 화살표가 나오는 모양)을 누릅니다.<br>
+      2. <b>홈 화면에 추가</b>를 누릅니다.<br>
+      3. 홈 화면에 생긴 <b>감다줍</b> 아이콘으로 엽니다.
+    </div>
+    <div class="hint" style="font-size:.95em">이렇게 열면 주소창 없이 꽉 찬 화면으로 열리고, 키보드를 쓰거나 이름을 입력해도 풀리지 않습니다.<br>랭킹과 설정은 사파리와 따로 저장되어 새로 시작합니다.</div>
+    <div style="text-align:center;margin-top:.8em"><button id="a2hsClose" type="button">닫기</button></div>
+  </div></div>
   <div class="ov" id="menu"><div class="card">
     <h2>운영자 메뉴</h2>
     <div class="set"><span>2인 대결 감 배율</span><span><button class="sub" data-a="m-">−</button> <span class="v" id="vMult"></span> <button class="sub" data-a="m+">＋</button></span></div>
@@ -87,7 +97,15 @@ function saveAll(){lsSet('gdj_cfg2',CFG);lsSet('gdj_rank',ranks);lsSet('gdj_maps
 
 /* ---------- layout ---------- */
 let scale=1;
-function fit(){const w=innerWidth,h=innerHeight;scale=Math.min(w/W,h/H);stage.style.width=(W*scale)+'px';stage.style.height=(H*scale)+'px';stage.style.fontSize=(24*scale)+'px'}
+const wrapEl=document.getElementById('wrap');
+function fit(){const vv=window.visualViewport;const w=vv?vv.width:innerWidth,h=vv?vv.height:innerHeight;
+  if(vv){wrapEl.style.right='auto';wrapEl.style.bottom='auto';wrapEl.style.left=vv.offsetLeft+'px';wrapEl.style.top=vv.offsetTop+'px';wrapEl.style.width=w+'px';wrapEl.style.height=h+'px'}
+  scale=Math.min(w/W,h/H);stage.style.width=(W*scale)+'px';stage.style.height=(H*scale)+'px';stage.style.fontSize=(24*scale)+'px';
+  if(!vv&&(window.scrollX||window.scrollY))window.scrollTo(0,0)}
+function refit(){fit();setTimeout(fit,120);setTimeout(fit,500);setTimeout(fit,1200)}
+['fullscreenchange','webkitfullscreenchange'].forEach(n=>document.addEventListener(n,refit));
+document.addEventListener('focusin',refit);document.addEventListener('focusout',refit);addEventListener('pageshow',refit);
+if(window.visualViewport)visualViewport.addEventListener('scroll',fit);
 addEventListener('resize',fit);if(window.visualViewport)visualViewport.addEventListener('resize',fit);addEventListener('orientationchange',fit);fit();
 
 /* ---------- images ---------- */
@@ -322,16 +340,19 @@ menu.addEventListener('click',e=>{const a=e.target&&e.target.dataset?e.target.da
   if(a==='close'){toggleMenu();if(S.name!=='idle'){nameOv.classList.remove('on');go('idle')}}
   saveAll();refreshMenu()});
 function isFull(){const d=document;return !!(d.fullscreenElement||d.webkitFullscreenElement)||(navigator.standalone===true)}
-function toggleFull(){try{const d=document;if(d.fullscreenElement||d.webkitFullscreenElement)(d.exitFullscreen||d.webkitExitFullscreen).call(d);else{const el=d.documentElement,r=(el.requestFullscreen||el.webkitRequestFullscreen).call(el);if(r&&r.catch)r.catch(()=>{})}}catch(err){}}
+const IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/Mac/.test(navigator.platform||''));
+function toggleFull(){if(IOS){const d=document;if(d.fullscreenElement||d.webkitFullscreenElement){try{(d.exitFullscreen||d.webkitExitFullscreen).call(d)}catch(e){}}document.getElementById('a2hs').classList.add('on');return}try{const d=document;if(d.fullscreenElement||d.webkitFullscreenElement)(d.exitFullscreen||d.webkitExitFullscreen).call(d);else{const el=d.documentElement,r=(el.requestFullscreen||el.webkitRequestFullscreen).call(el);if(r&&r.catch)r.catch(()=>{})}}catch(err){}}
+document.getElementById('a2hsClose').addEventListener('click',()=>document.getElementById('a2hs').classList.remove('on'));
 const fsBtn=document.getElementById('fsBtn');fsBtn.addEventListener('click',e=>{e.stopPropagation();audioUnlock();toggleFull();fsBtn.blur()});
 function padInfo(){const ps=pads();if(!('getGamepads' in navigator))return'이 브라우저는 컨트롤러를 지원하지 않습니다.';if(!ps.length)return'연결된 컨트롤러 없음 — 조이콘 버튼을 한 번 눌러 보세요.';
   return ps.map(g=>{const sp=isSplit(g),st=k=>padMaps[mapKey(g,k)]?'완료':'기본값';return`#${g.index} ${g.id}\n  ${sp?'좌우 반쪽씩 2인으로 사용':'1인용으로 사용'}   축: ${Array.from(g.axes).map(v=>v.toFixed(2)).join(' ')}\n  눌린 버튼: ${g.buttons.map((b,i)=>b.pressed?i:null).filter(v=>v!=null).join(',')||'-'}   방향 맞춤: ${sp?'왼쪽 '+st('L')+' / 오른쪽 '+st('R'):st('')}\n  게임에 들어가는 값: ${(sp?['L','R']:['']).map(k=>{const v=readDev('pad:'+g.index+(k?':'+k:''));return (k?(k==='L'?'왼쪽 ':'오른쪽 '):'')+'가로 '+v.x.toFixed(1)+' 세로 '+v.y.toFixed(1)}).join(' / ')}`}).join('\n')}
 
 /* ---------- main loop ---------- */
 let last=0,fsShown=null;
-function frame(ts){const fsWant=(S.name==='idle'&&!menuOpen&&navigator.standalone!==true)?(isFull()?'✕ 전체화면 끄기':'⛶ 전체화면'):'';if(fsWant!==fsShown){fsShown=fsWant;fsBtn.style.display=fsWant?'block':'none';if(fsWant)fsBtn.textContent=fsWant}
+function frame(ts){const fsWant=(S.name==='idle'&&!menuOpen&&navigator.standalone!==true&&!document.getElementById('a2hs').classList.contains('on'))?(IOS?'⛶ 전체화면으로 여는 법':isFull()?'✕ 전체화면 끄기':'⛶ 전체화면'):'';if(fsWant!==fsShown){fsShown=fsWant;fsBtn.style.display=fsWant?'block':'none';if(fsWant)fsBtn.textContent=fsWant}
   const dt=Math.min(0.05,(ts-last)/1000||0);last=ts;pollPads();
   if(menuOpen){document.getElementById('padinfo').textContent=padInfo();presses=[];acts=[];requestAnimationFrame(frame);return}
+  if(document.getElementById('a2hs').classList.contains('on')){if(presses.length)document.getElementById('a2hs').classList.remove('on');presses=[];acts=[]}
   S.t+=dt;ctx.clearRect(0,0,W,H);
   switch(S.name){
     case'idle':drawIdle(dt);if(presses.length){SFX.join();go('join',{devs:[presses[0]]})}break;
