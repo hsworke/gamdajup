@@ -101,12 +101,14 @@ const SFX={catch(){tone(740,.09,'triangle',.18);tone(1100,.12,'triangle',.16,.07
   end(){tone(880,.15,'triangle',.18);tone(660,.15,'triangle',.18,.15);tone(440,.4,'triangle',.18,.3)},join(){tone(600,.08,'triangle',.15);tone(900,.14,'triangle',.15,.08)},dash(){tone(300,.1,'sine',.08,0,600)}};
 
 /* ---------- input ---------- */
-const keys={};let presses=[];
+const keys={};let presses=[],acts=[];
+const KB1M=['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'],KB1A=['Enter','NumpadEnter','ShiftRight','Slash'],KB2M=['KeyW','KeyA','KeyS','KeyD'],KB2A=['Space','KeyF','KeyG','ShiftLeft'];
+const INGAME=['count','play','end'];
 const padPrev={};
 const DZ=0.28;
 function typing(){const a=document.activeElement;return a&&a.tagName==='INPUT'}
-addEventListener('keydown',e=>{audioUnlock();if(typing())return;if(S.name==='name'&&!menuOpen&&nameInputs.length){if(e.key==='Enter'){e.preventDefault();nameAdvance()}else if(e.key==='ArrowLeft')setSel(nameSel-1);else if(e.key==='ArrowRight')setSel(nameSel+1);else if(nameSel<nameInputs.length)setSel(nameSel);return}if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
-  if(!keys[e.code]){if(e.code==='Space'||e.code==='Enter')presses.push('kb1');if(e.code==='KeyF'||e.code==='KeyG')presses.push('kb2');if(e.code==='KeyO')toggleMenu()}
+addEventListener('keydown',e=>{audioUnlock();if(typing())return;if(S.name==='name'&&!menuOpen&&nameInputs.length){if(S.t<1.0){e.preventDefault();return}if(e.key==='Enter'){e.preventDefault();nameAdvance()}else if(e.key==='Tab'){e.preventDefault();setSel(e.shiftKey?nameSel-1:(nameSel+1)%(nameInputs.length+1))}else if(e.key==='ArrowLeft')setSel(nameSel-1);else if(e.key==='ArrowRight')setSel(nameSel+1);else if(nameSel<nameInputs.length)setSel(nameSel);return}if(KB1M.includes(e.code)||KB1A.includes(e.code)||KB2A.includes(e.code)||e.code==='Tab')e.preventDefault();
+  if(!keys[e.code]){const c=e.code;if(KB1A.includes(c)){presses.push('kb1');acts.push('kb1')}else if(KB2A.includes(c)){presses.push('kb2');acts.push('kb2')}else if(!INGAME.includes(S.name)){if(KB1M.includes(c))presses.push('kb1');else if(KB2M.includes(c))presses.push('kb2')}if(c==='Digit0'||c==='Numpad0')toggleMenu()}
   keys[e.code]=true});
 addEventListener('keyup',e=>{keys[e.code]=false});
 let touchT=null,touchT2=null,lastTap=null,cornerTimer=null;const pts=new Map(),ZONE=770;
@@ -154,7 +156,7 @@ function roleLabel(r){return r==='magpie'?'까치':r==='person'?'장대':'혼자
 function newPlayer(dev,role){return{dev,role,x:role==='magpie'?420:W/2-120,y:role==='magpie'?480:PY,vx:0,face:1,score:0,combo:0,maxCombo:0,stun:0,slow:0,dashT:0,dashCd:0,dashDir:1,caught:0,flap:0}}
 function devSide(dev){if(!dev||!dev.startsWith('pad:'))return'';const a=dev.split(':');if(a[2])return a[2];const gp=padByIndex(+a[1]);if(!gp)return'';
   if(/\(L\)|Joy-?Con\s*L\b|\bLeft\b/i.test(gp.id))return'L';if(/\(R\)|Joy-?Con\s*R\b|\bRight\b/i.test(gp.id))return'R';return''}
-function setupPlayers(devs){if(devs.length===2&&devSide(devs[0])==='R'&&devSide(devs[1])==='L')devs=[devs[1],devs[0]];players=devs.length===1?[newPlayer(devs[0],'solo')]:[newPlayer(devs[0],'person'),newPlayer(devs[1],'magpie')];if(players.length===1)players[0].x=W/2-120}
+function setupPlayers(devs){if(devs.length===2&&devs[0]==='kb1'&&devs[1]==='kb2')devs=['kb2','kb1'];if(devs.length===2&&devSide(devs[0])==='R'&&devSide(devs[1])==='L')devs=[devs[1],devs[0]];players=devs.length===1?[newPlayer(devs[0],'solo')]:[newPlayer(devs[0],'person'),newPlayer(devs[1],'magpie')];if(players.length===1)players[0].x=W/2-120}
 function startRound(){items=[];fx=[];T=CFG.time;spawnT=0.5}
 function phase(){const e=CFG.time-T;return e<CFG.time/3?0:e<CFG.time*2/3?1:2}
 const INT=[0.95,0.68,0.44],PHONG=[0.10,0.15,0.18],PBURR=[0,0.12,0.15],V0=[230,290,350];
@@ -174,7 +176,7 @@ function updatePlay(dt,active){
     if(p.stun>0){p.stun-=dt;ix=0;iy=0}
     if(p.slow>0)p.slow-=dt;if(p.dashCd>0)p.dashCd-=dt;
     if(ix!==0){p.face=ix>0?1:-1;p.dashDir=p.face}
-    if(presses.includes(p.dev)&&!p.dev.startsWith('touch')&&p.dashCd<=0&&p.stun<=0&&active){p.dashT=0.16;p.dashCd=0.8;SFX.dash()}
+    if((p.dev.startsWith('kb')?acts:presses).includes(p.dev)&&!p.dev.startsWith('touch')&&p.dashCd<=0&&p.stun<=0&&active){p.dashT=0.16;p.dashCd=0.8;SFX.dash()}
     if(p.role==='magpie'){const sp=600*CFG.mag*(p.slow>0?0.55:1);let vx=ix*sp,vy=iy*sp;if(p.dashT>0){p.dashT-=dt;vx+=p.dashDir*1100}
       p.x=Math.max(60,Math.min(1340,p.x+vx*dt));p.y=Math.max(350,Math.min(740,p.y+vy*dt));p.vx=vx;p.flap+=dt*(Math.abs(vx)+Math.abs(vy)>50?1.6:1)}
     else{let vx=ix*900;if(p.dashT>0){p.dashT-=dt;vx=p.dashDir*2000}p.x=Math.max(PXMIN,Math.min(PXMAX,p.x+vx*dt));p.vx+= (vx-p.vx)*Math.min(1,dt*10)}
@@ -250,14 +252,14 @@ function drawIdle(dt){drawBg();
     txt('떨어지는 감을 잡아라!',W/2+230,590,42,'#6b7466','center',null,0,700);
     img('gam',W/2+90,700,80);txt('+1',W/2+160,702,40,GREEN,'left');img('hongsi',W/2+280,700,80);txt('+3',W/2+350,702,40,RED,'left');
     drawBurr(W/2+120,790,30,0);txt('밤송이는 피하기!',W/2+170,792,36,GREEN,'left',null,0,800)}
-  panel(W/2-520,905,1040,200,ORANGE,'#fff');if(Math.floor(S.t*1.6)%2===0)txt('버튼을 누르면 시작!',W/2,962,64,'#fff');
-  txt('혼자: 버튼 한 번   ·   둘이: 두 사람 모두 자기 조이콘 버튼',W/2,1030,34,'#fff','center',null,0,800);txt('둘이 하면 1P 장대 vs 2P 까치 대결!',W/2,1074,34,'#FFE9B0','center',null,0,800);
-  txt('조이콘이 없으면 화면을 터치!',W/2,1140,28,'#fff','center',GREEN,8,800)}
+  panel(W/2-520,905,1040,200,ORANGE,'#fff');if(Math.floor(S.t*1.6)%2===0)txt('키를 누르면 시작!',W/2,962,64,'#fff');
+  txt('혼자: 내 쪽 키를 누르기   ·   둘이: 두 사람 모두 자기 쪽 키 누르기',W/2,1030,34,'#fff','center',null,0,800);txt('왼쪽  W A S D = 1P 장대     오른쪽  방향키 = 2P 까치',W/2,1074,34,'#FFE9B0','center',null,0,800);
+  txt('조이콘 버튼 · 화면 터치도 가능',W/2,1140,28,'#fff','center',GREEN,8,800)}
 function drawJoin(){drawBg();dim(0.4);panel(300,300,1000,520);const left=Math.max(0,Math.ceil(JOINT-S.t));
-  if(S.devs.length===1){txt('1P 참가 완료!',W/2,400,88,ORANGE);txt(S.devs[0]==='touch'?'둘이 하면 한 화면에서':'친구도 자기 조이콘 버튼을 누르면',W/2,520,52,GREEN,'center',null,0,800);txt('장대 vs 까치 2인 대결',W/2,590,58,GREEN);
+  if(S.devs.length===1){txt('참가 완료!',W/2,400,88,ORANGE);txt(S.devs[0]==='touch'?'둘이 하면 한 화면에서':S.devs[0]==='kb2'?'친구도 방향키를 누르면':S.devs[0]==='kb1'?'친구도 W A S D 키를 누르면':'친구도 자기 조이콘 버튼을 누르면',W/2,520,52,GREEN,'center',null,0,800);txt('장대 vs 까치 2인 대결',W/2,590,58,GREEN);
     if(S.devs[0]==='touch'){panel(350,676,440,116,ORANGE,'#fff');txt('혼자 시작 ('+left+')',570,734,46,'#fff');panel(810,676,440,116,GREEN,'#fff');txt('둘이 하기 (터치)',1030,734,46,'#fff')}
-    else{txt(left+'초 뒤 혼자 시작',W/2,700,46,'#6b7466','center',null,0,700);txt('1P가 버튼을 한 번 더 누르면 바로 시작',W/2,768,30,'#8a927f','center',null,0,600)}}
-  else{txt('2인 대결!',W/2,400,96,ORANGE);img('gam',W/2-250,570,150);txt('1P 장대',W/2-250,690,50,GREEN);txt('VS',W/2,580,80,GREEN);img('k5',W/2+250,560,190);txt('2P 까치',W/2+250,690,50,GREEN);if(S.devs.some(d=>devSide(d)))txt('왼쪽 조이콘이 1P 장대 · 오른쪽 조이콘이 2P 까치',W/2,770,34,'#6b7466','center',null,0,800)}}
+    else{txt(left+'초 뒤 혼자 시작',W/2,700,46,'#6b7466','center',null,0,700);txt(S.devs[0]==='kb2'?'스페이스바를 누르면 바로 혼자 시작':S.devs[0]==='kb1'?'엔터를 누르면 바로 혼자 시작':'1P가 버튼을 한 번 더 누르면 바로 시작',W/2,768,30,'#8a927f','center',null,0,600)}}
+  else{txt('2인 대결!',W/2,400,96,ORANGE);img('gam',W/2-250,570,150);txt('1P 장대',W/2-250,690,50,GREEN);txt('VS',W/2,580,80,GREEN);img('k5',W/2+250,560,190);txt('2P 까치',W/2+250,690,50,GREEN);if(S.devs.some(d=>devSide(d)))txt('왼쪽 조이콘이 1P 장대 · 오른쪽 조이콘이 2P 까치',W/2,770,34,'#6b7466','center',null,0,800);else if(S.devs.includes('kb1')&&S.devs.includes('kb2'))txt('W A S D 가 1P 장대 · 방향키가 2P 까치',W/2,770,34,'#6b7466','center',null,0,800)}}
 function drawCalib(){drawBg();dim(0.45);panel(240,280,1120,600);txt('조작 방향 맞추기',W/2,370,72,GREEN);
   const n=S.cal.length;S.cal.forEach((c,i)=>{const cx=n===1?W/2:W/2+(i?270:-270),who=(players.indexOf(c.p)+1)+'P'+(c.p.role==='magpie'?' 까치':c.p.role==='person'?' 장대':'');
     txt(who,cx,480,64,ORANGE);if(c.done){txt('좋아요!',cx,620,64,GREEN)}else{const off=Math.sin(S.t*6)*24;txt('스틱을',cx,560,44,GREEN,'center',null,0,800);txt('➜',cx+off,650,120,ORANGE);txt('오른쪽으로 밀기',cx,750,44,GREEN,'center',null,0,800)}});
@@ -267,7 +269,8 @@ function drawCount(){drawWorld();drawHud();const n=3-Math.floor(S.t);panel(W/2-4
   if(n>0)txt(String(n),W/2,560,300,'#fff','center',GREEN,36);else txt('시작!',W/2,560,220,ORANGE,'center','#fff',34);
   const tch=players.some(p=>p.dev.startsWith('touch')),two=players.length===2&&players[1].dev==='touch2';
   if(two){ctx.setLineDash([24,18]);ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(0,ZONE);ctx.lineTo(W,ZONE);ctx.stroke();ctx.setLineDash([]);txt('▲ 위쪽을 누르면 까치',300,ZONE-40,36,'#fff','center',GREEN,10,800);txt('▼ 아래쪽을 누르면 장대',300,ZONE+44,36,'#fff','center',GREEN,10,800)}
-  panel(W/2-560,1060,1120,100,'rgba(255,248,234,.94)');txt(tch?'화면을 누른 채 움직이면 따라와요     5연속으로 잡으면 점수 2배':'스틱: 이동     버튼: 대시     5연속으로 잡으면 점수 2배',W/2,1110,tch?34:38,GREEN,'center',null,0,800)}
+  panel(W/2-560,1060,1120,100,'rgba(255,248,234,.94)');const kbs=players.map(p=>p.dev).filter(d=>d.startsWith('kb'));const kt=kbs.length===2?'1P  W A S D 이동 · 스페이스 대시          2P  방향키 이동 · 엔터 대시':kbs[0]==='kb2'?'W A S D: 이동     스페이스: 대시     5연속으로 잡으면 점수 2배':'방향키: 이동     엔터: 대시     5연속으로 잡으면 점수 2배';
+  txt(tch?'화면을 누른 채 움직이면 따라와요     5연속으로 잡으면 점수 2배':kbs.length?kt:'스틱: 이동     버튼: 대시     5연속으로 잡으면 점수 2배',W/2,1110,(tch||kbs.length===2)?32:38,GREEN,'center',null,0,800)}
 function drawResult(){drawWorld();dim(0.5);panel(260,230,1080,700);
   if(players.length===1){const p=players[0];txt('끝!',W/2,330,90,GREEN);txt(p.score+'점',W/2,520,220,ORANGE);txt(`잡은 감 ${p.caught}개   최대 ${p.maxCombo}연속`,W/2,690,46,GREEN,'center',null,0,800);
     txt(`지금 순위 ${rankIfAdded(p.score,p.maxCombo)}위`,W/2,790,64,RED)}
@@ -295,8 +298,8 @@ function openNames(){nameRow.innerHTML='';nameInputs=[];nameNow=[];players.forEa
     d.innerHTML=`<div class="lab">${lab}</div><div class="sc">${p.score}점</div>`;const now=document.createElement('div');now.className='now';d.appendChild(now);nameNow.push(now);
     const inp=document.createElement('input');inp.className='nm';inp.maxLength=6;inp.placeholder=defName(p);inp.setAttribute('autocomplete','off');inp.setAttribute('autocapitalize','off');inp.setAttribute('autocorrect','off');inp.setAttribute('spellcheck','false');inp.setAttribute('enterkeyhint','next');
     inp.addEventListener('input',()=>{nameLeft=30});inp.addEventListener('focus',()=>{if(nameSel!==k)setSel(k);nameLeft=Math.max(nameLeft,25)});
-    inp.addEventListener('keydown',e=>{e.stopPropagation();audioUnlock();if(e.key==='Enter'&&!e.isComposing){e.preventDefault();nameAdvance()}});d.appendChild(inp);nameRow.appendChild(d);nameInputs.push(inp)});
-  nameLeft=30;nameOv.classList.add('on');nameSel=0;setSel(0);setTimeout(()=>{if(S.name==='name')setSel(nameSel)},80)}
+    inp.addEventListener('keydown',e=>{e.stopPropagation();audioUnlock();if(inp.readOnly){e.preventDefault();return}if(e.key==='Enter'&&!e.isComposing){e.preventDefault();nameAdvance()}else if(e.key==='Tab'){e.preventDefault();setSel(e.shiftKey?nameSel-1:(nameSel+1)%(nameInputs.length+1))}});d.appendChild(inp);nameRow.appendChild(d);nameInputs.push(inp)});
+  nameLeft=30;nameOv.classList.add('on');nameSel=0;setSel(0);nameInputs.forEach(i=>i.readOnly=true);setTimeout(()=>{nameInputs.forEach(i=>i.readOnly=false);if(S.name==='name')setSel(nameSel)},1000)}
 function submitNames(){if(S.name!=='name')return;const now=Date.now();lastNew=[];players.forEach((p,i)=>{const inp=nameInputs[i];const nm=(inp.value||'').trim().slice(0,6)||inp.placeholder;const id=now+'-'+i;ranks.push({id,name:nm,score:p.score,combo:p.maxCombo,role:p.role,t:now+i});lastNew.push(id)});
   ranks=sortedRanks().slice(0,300);saveAll();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();nameOv.classList.remove('on');go('rank')}
 document.getElementById('nameOk').addEventListener('click',submitNames);
@@ -321,12 +324,12 @@ function padInfo(){const ps=pads();if(!('getGamepads' in navigator))return'이 �
 /* ---------- main loop ---------- */
 let last=0;
 function frame(ts){const dt=Math.min(0.05,(ts-last)/1000||0);last=ts;pollPads();
-  if(menuOpen){document.getElementById('padinfo').textContent=padInfo();presses=[];requestAnimationFrame(frame);return}
+  if(menuOpen){document.getElementById('padinfo').textContent=padInfo();presses=[];acts=[];requestAnimationFrame(frame);return}
   S.t+=dt;ctx.clearRect(0,0,W,H);
   switch(S.name){
     case'idle':drawIdle(dt);if(presses.length){SFX.join();go('join',{devs:[presses[0]]})}break;
     case'join':{drawJoin();const d0=S.devs[0];
-      if(S.devs.length===1){for(const d of presses){if(d==='touch'&&d0==='touch'){if(S.t>0.5&&lastTap&&lastTap.y>670&&lastTap.y<800){if(lastTap.x>350&&lastTap.x<790)S.t=99;else if(lastTap.x>810&&lastTap.x<1250){S.devs.push('touch2');S.t2=S.t;SFX.join();break}}}else if(d!==d0&&d!=='touch'){S.devs.push(d);S.t2=S.t;SFX.join();break}else if(d===d0&&d!=='touch'&&S.t>1.0){S.t=99}}}
+      if(S.devs.length===1){for(const d of presses){if(d==='touch'&&d0==='touch'){if(S.t>0.5&&lastTap&&lastTap.y>670&&lastTap.y<800){if(lastTap.x>350&&lastTap.x<790)S.t=99;else if(lastTap.x>810&&lastTap.x<1250){S.devs.push('touch2');S.t2=S.t;SFX.join();break}}}else if(d!==d0&&d!=='touch'){S.devs.push(d);S.t2=S.t;SFX.join();break}else if(d===d0&&d!=='touch'&&S.t>1.0&&(!d.startsWith('kb')||acts.includes(d))){S.t=99}}}
       if((S.devs.length===2&&S.t-S.t2>1.4)||(S.devs.length===1&&S.t>=JOINT)){setupPlayers(S.devs);bgi=counters.bg++;saveAll();startRound();
         const cal=players.filter(p=>needCal(p.dev)).map(p=>({p,base:null,cand:null,hold:0,done:false}));if(cal.length)go('calib',{cal});else go('count')}
       break}
@@ -340,14 +343,14 @@ function frame(ts){const dt=Math.min(0.05,(ts-last)/1000||0);last=ts;pollPads();
     case'end':updatePlay(dt,false);drawWorld();drawHud();dim(0.25);txt('끝!',W/2,560,260,'#fff','center',GREEN,36);if(S.t>1.4)go('result');break;
     case'result':drawResult();if(S.t>5.5||(S.t>1.5&&presses.length)){go('name');openNames()}break;
     case'name':{drawWorld();dim(0.3);nameLeft-=dt;const two=nameInputs.length>1,onBtn=nameSel>=nameInputs.length;
-      nameHint.innerHTML=(two?'1P 버튼: 왼쪽 칸 · 2P 버튼: 오른쪽 칸 · 스틱 좌우: 이동':'스틱 좌우: 이름 칸 ↔ 등록 버튼')+'<br>'+(onBtn?'지금 버튼을 누르면 랭킹 등록!':'이름을 다 쳤으면 버튼을 한 번 더 → 랭킹 등록으로 이동')+' · '+Math.max(0,Math.ceil(nameLeft))+'초 뒤 자동 등록';
+      const padP=players.some(p=>p.dev.startsWith('pad:'));nameHint.innerHTML=(padP?((two?'1P 버튼: 왼쪽 칸 · 2P 버튼: 오른쪽 칸 · 스틱 좌우: 이동':'스틱 좌우: 이름 칸 ↔ 등록 버튼')+'<br>'+(onBtn?'지금 버튼을 누르면 랭킹 등록!':'이름을 다 쳤으면 버튼을 한 번 더 → 랭킹 등록으로 이동')):('이름을 치고 엔터 → '+(two?'다음 사람 → ':'')+'랭킹 등록'+(two?' · 탭 키: 칸 이동':'')+'<br>'+(onBtn?'지금 엔터를 누르면 랭킹 등록!':'이름을 안 쳐도 엔터만 누르면 자동 이름으로 등록')))+' · '+Math.max(0,Math.ceil(nameLeft))+'초 뒤 자동 등록';
       let nx=0;for(const p of players){const v=readDev(p.dev);if(p.dev.startsWith('pad:')&&Math.abs(v.x)>0.6)nx=Math.sign(v.x)}
       if(nx!==(S.nx||0)){S.nx=nx;if(nx)setSel(nameSel+nx)}
       if(S.t>1.0){const d=presses.find(d=>d.startsWith('pad:'));if(d)namePad(d)}
       if(nameLeft<=0)submitNames();break}
     case'rank':drawBg();drawRankBoard(0.45);if(Math.floor(S.t*1.6)%2===0)txt('버튼을 누르면 처음으로',W/2,1150,36,'#fff','center',GREEN,10,800);if(S.t>10||(S.t>2&&presses.length))go('idle');break;
   }
-  presses=[];requestAnimationFrame(frame)}
+  presses=[];acts=[];requestAnimationFrame(frame)}
 addEventListener('gamepadconnected',()=>{});
 loadImages().then(()=>{bgi=counters.bg;go('idle');requestAnimationFrame(frame)});
 </script>
